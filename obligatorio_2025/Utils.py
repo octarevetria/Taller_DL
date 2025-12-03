@@ -92,7 +92,7 @@ def train(model,
         history["train_dice"].append(train_dice)
         history["val_dice"].append(val_dice)
 
-        if best_model_path is not None and val_dice > best_val_dice:
+        if val_dice > best_val_dice:
             best_val_dice = val_dice
             torch.save(model.state_dict(), best_model_path)
 
@@ -176,7 +176,7 @@ def train_full(model, loader, optimizer, criterion, device, num_epochs=5):
         "train_dice": []
     }
 
-    for epoch in range(1, num_epochs + 1):
+    for epoch in tqdm(range(1, num_epochs + 1)):
         train_loss, train_dice = train_one_epoch(
             model, loader, optimizer, criterion, device
         )
