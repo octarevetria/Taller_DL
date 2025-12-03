@@ -1,5 +1,7 @@
 import torch
+import os
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
@@ -214,3 +216,59 @@ def mask_to_rle(mask: np.ndarray) -> str:
 
     rle = " ".join(str(x) for pair in zip(starts, lengths) for x in pair)
     return rle
+
+import os
+import pandas as pd
+
+def save_history_to_csv(history, metrics_dir, run_name):
+
+    os.makedirs(metrics_dir, exist_ok=True)
+
+    filename = f"metrics_{run_name}.csv"
+    metrics_path = os.path.join(metrics_dir, filename)
+
+    num_epochs = len(history["train_loss"])
+
+    metrics_df = pd.DataFrame({
+        "epoch": list(range(1, num_epochs + 1)),
+        "train_loss": history["train_loss"],
+        "val_loss": history["val_loss"],
+        "train_dice": history["train_dice"],
+        "val_dice": history["val_dice"],
+    })
+
+    metrics_df.to_csv(metrics_path, index=False)
+
+    print("Archivo guardado en:", metrics_path)
+    return metrics_df
+
+def collect_val_examples_with_dice(model, device, loader, max_batches=None):
+    model.eval()
+    images_list = []
+    masks_list = []
+    preds_list = []
+    dices_list = []
+
+    with torch.no_grad():
+        for b_idx, (imgs, masks) in enumerate(loader):
+            imgs = imgs.to(device)
+            masks = masks.to(device)
+
+            preds = model(imgs)
+            probs = torch.sigmoid(preds)
+            preds_bin = (probs > 0.5).float()
+
+            intersection = (preds_bin * masks).sum(dim=(2,3))
+            union = preds_bin.sum(dim=(2,3)) + masks.sum(dim=(2,3))
+            batch_dice = (2 * intersection + 1e-7) / (union + 1e-7)
+
+            for i in range(imgs.size(0)):
+                images_list.append(imgs[i].cpu())
+                masks_list.append(masks[i].cpu())
+                preds_list.append(preds_bin[i].cpu())
+                dices_list.append(batch_dice[i].item())
+
+            if max_batches is not None and (b_idx + 1) >= max_batches:
+                break
+
+    return images_list, masks_list, preds_list, np.array(dices_list)
