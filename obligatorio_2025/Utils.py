@@ -92,15 +92,18 @@ def train(model,
         history["train_dice"].append(train_dice)
         history["val_dice"].append(val_dice)
 
-        if val_dice > best_val_dice:
-            best_val_dice = val_dice
-            torch.save(model.state_dict(), best_model_path)
-
         print(
             f"Epoch {epoch}/{num_epochs} | "
             f"Train Loss: {train_loss:.4f} | Train Dice: {train_dice:.4f} | "
             f"Val Loss: {val_loss:.4f} | Val Dice: {val_dice:.4f}"
         )
+
+        if val_dice > best_val_dice:
+            best_val_dice = val_dice
+            torch.save(model.state_dict(), best_model_path)
+            print(f"  --> Nuevo mejor modelo guardado con Val Dice: {best_val_dice:.4f}")
+
+
 
     return history
 
